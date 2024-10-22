@@ -4,38 +4,116 @@ use std::io;
 use std::io::Write;
 use std::time::Instant;
 
+struct Question {
+    lhs: i32,
+    rhs: i32,
+    result: i32,
+    question_string: String,
+}
+
+fn addition() -> Question {
+    let range = 20;
+
+    let mut my_question = Question {
+        lhs: rand::thread_rng().gen_range(0..=range),
+        rhs: rand::thread_rng().gen_range(2..=range),
+        result: 0,
+        question_string: String::new(),
+    };
+
+    my_question.result = my_question.lhs + my_question.rhs;
+    my_question.question_string = format!("{} + {} = ", my_question.lhs, my_question.rhs);
+
+    my_question
+}
+
+fn subtraction() -> Question {
+    let range = 20;
+
+    let mut my_question = Question {
+        lhs: rand::thread_rng().gen_range(0..=range),
+        rhs: rand::thread_rng().gen_range(2..=range),
+        result: 0,
+        question_string: String::new(),
+    };
+
+    if my_question.rhs > my_question.lhs {
+        std::mem::swap(&mut my_question.lhs, &mut my_question.rhs);
+    }
+
+    my_question.result = my_question.lhs - my_question.rhs;
+    my_question.question_string = format!("{} - {} = ", my_question.lhs, my_question.rhs);
+
+    my_question
+}
+
+fn multiplication() -> Question {
+    let range = 12;
+
+    let mut my_question = Question {
+        lhs: rand::thread_rng().gen_range(0..=range),
+        rhs: rand::thread_rng().gen_range(2..=range),
+        result: 0,
+        question_string: String::new(),
+    };
+
+    my_question.result = my_question.lhs * my_question.rhs;
+    my_question.question_string = format!("{} x {} = ", my_question.lhs, my_question.rhs);
+
+    my_question
+}
+
+fn division() -> Question {
+    let range = 12;
+
+    let mut my_question = Question {
+        lhs: rand::thread_rng().gen_range(0..=range),
+        rhs: rand::thread_rng().gen_range(2..=range),
+        result: 0,
+        question_string: String::new(),
+    };
+
+    my_question.result = my_question.lhs;
+    my_question.lhs = my_question.lhs * my_question.rhs;
+    my_question.question_string = format!("{} ÷ {} = ", my_question.lhs, my_question.rhs);
+
+    my_question
+}
+
 fn main() {
     println!("*********************************************");
     println!("Hi Elise, Welcome to daddy's maths challenge!");
     println!("*********************************************");
 
-    // defines number range
-    let range = 12;
-
     let mut question_number = 1;
-    let total_questions = 10;
+    let total_questions = 20;
 
     // start timer
     let start_time = Instant::now();
 
     while question_number <= total_questions {
         // Prep the questions
-        let lhs = rand::thread_rng().gen_range(0..=range);
-        let rhs = rand::thread_rng().gen_range(0..=range);
-        let product = lhs * rhs;
+
+        let question = match rand::thread_rng().gen_range(0..=3) {
+            0 => addition(),
+            1 => subtraction(),
+            2 => multiplication(),
+            3 => division(),
+            _ => multiplication(),
+        };
 
         println!("***********");
         println!("Question {}", question_number);
         println!("***********");
         println!();
 
-        let mut result = false;
+        let mut is_answer_correct = false;
 
-        while result == false {
-            print!("{} x {} = ", lhs, rhs);
+        while is_answer_correct == false {
+            print!("{}", question.question_string);
             io::stdout().flush().unwrap();
 
-            let answer: u32 = loop {
+            let answer: i32 = loop {
                 let mut answer = String::new();
                 io::stdin()
                     .read_line(&mut answer)
@@ -46,18 +124,18 @@ fn main() {
                     Err(_) => {
                         println!("Elise, that's not a valid number!");
                         println!();
-                        print!("{} x {} = ", lhs, rhs);
+                        print!("{}", question.question_string);
                         io::stdout().flush().unwrap();
                         continue;
                     }
                 };
             };
 
-            match answer.cmp(&product) {
+            match answer.cmp(&question.result) {
                 Ordering::Equal => {
                     println!("Well done, Elise!");
                     println!();
-                    result = true;
+                    is_answer_correct = true;
                 }
                 _ => {
                     println!("Nope, try again.");

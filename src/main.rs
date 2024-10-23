@@ -1,5 +1,6 @@
 use colored::Colorize;
 use rand::Rng;
+use rand_distr::{Distribution, Uniform};
 use std::cmp::Ordering;
 use std::io;
 use std::io::Write;
@@ -12,12 +13,10 @@ struct Question {
     question_string: String,
 }
 
-fn addition() -> Question {
-    let range = 20;
-
+fn addition(range: i32) -> Question {
     let mut my_question = Question {
-        lhs: rand::thread_rng().gen_range(0..=range),
-        rhs: rand::thread_rng().gen_range(2..=range),
+        lhs: rand::thread_rng().gen_range(10..=range),
+        rhs: rand::thread_rng().gen_range(0..=range),
         result: 0,
         question_string: String::new(),
     };
@@ -28,12 +27,10 @@ fn addition() -> Question {
     my_question
 }
 
-fn subtraction() -> Question {
-    let range = 20;
-
+fn subtraction(range: i32) -> Question {
     let mut my_question = Question {
-        lhs: rand::thread_rng().gen_range(0..=range),
-        rhs: rand::thread_rng().gen_range(2..=range),
+        lhs: rand::thread_rng().gen_range(10..=range),
+        rhs: rand::thread_rng().gen_range(0..=range),
         result: 0,
         question_string: String::new(),
     };
@@ -48,9 +45,7 @@ fn subtraction() -> Question {
     my_question
 }
 
-fn multiplication() -> Question {
-    let range = 12;
-
+fn multiplication(range: i32) -> Question {
     let mut my_question = Question {
         lhs: rand::thread_rng().gen_range(0..=range),
         rhs: rand::thread_rng().gen_range(2..=range),
@@ -64,9 +59,7 @@ fn multiplication() -> Question {
     my_question
 }
 
-fn division() -> Question {
-    let range = 12;
-
+fn division(range: i32) -> Question {
     let mut my_question = Question {
         lhs: rand::thread_rng().gen_range(0..=range),
         rhs: rand::thread_rng().gen_range(2..=range),
@@ -103,13 +96,17 @@ fn main() {
 
     while question_number <= total_questions {
         // Prep the questions
+        let addition_range = 20;
+        let subtraction_range = 30;
+        let multiplication_range = 12;
+        let division_range = 12;
 
-        let question = match rand::thread_rng().gen_range(0..=3) {
-            0 => addition(),
-            1 => subtraction(),
-            2 => multiplication(),
-            3 => division(),
-            _ => multiplication(),
+        let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
+            0 => addition(addition_range),
+            1 => subtraction(subtraction_range),
+            2 => multiplication(multiplication_range),
+            3 => division(division_range),
+            _ => break,
         };
 
         println!("{}", "***********".yellow());

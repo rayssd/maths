@@ -1,3 +1,4 @@
+use colored::Colorize;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::io;
@@ -81,9 +82,18 @@ fn division() -> Question {
 }
 
 fn main() {
-    println!("*********************************************");
-    println!("Hi Elise, Welcome to daddy's maths challenge!");
-    println!("*********************************************");
+    println!(
+        "{}",
+        "*********************************************".purple()
+    );
+    println!(
+        "Hi {}, Welcome to daddy's maths challenge!",
+        "Elise".bright_magenta()
+    );
+    println!(
+        "{}",
+        "*********************************************".purple()
+    );
 
     let mut question_number = 1;
     let total_questions = 20;
@@ -102,9 +112,9 @@ fn main() {
             _ => multiplication(),
         };
 
-        println!("***********");
-        println!("Question {}", question_number);
-        println!("***********");
+        println!("{}", "***********".yellow());
+        println!("{} {}", "Question".blue(), question_number);
+        println!("{}", "***********".yellow());
         println!();
 
         let mut is_answer_correct = false;
@@ -133,12 +143,12 @@ fn main() {
 
             match answer.cmp(&question.result) {
                 Ordering::Equal => {
-                    println!("Well done, Elise!");
+                    println!("Well done, {}!", "Elise".bright_magenta());
                     println!();
                     is_answer_correct = true;
                 }
                 _ => {
-                    println!("Nope, try again.");
+                    println!("{}", "Nope, try again.".red());
                     println!();
                 }
             };

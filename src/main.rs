@@ -13,6 +13,48 @@ struct Question {
     question_string: String,
 }
 
+struct SimplePolynomial {
+    n1: i32,
+    n2: i32,
+    n3: i32,
+    n4: i32,
+    result: i32,
+    question_string: String,
+}
+
+fn simple_polynomial(range: i32) -> SimplePolynomial {
+    let mut my_question = SimplePolynomial {
+        n1: rand::thread_rng().gen_range(1..=range),
+        n2: rand::thread_rng().gen_range(1..=range),
+        n3: rand::thread_rng().gen_range(1..=range),
+        n4: rand::thread_rng().gen_range(1..=range),
+        result: 0,
+        question_string: String::new(),
+    };
+
+    my_question.result = my_question.n4 + my_question.n3 - my_question.n2 - my_question.n1;
+
+    match my_question.result.cmp(&0) {
+        Ordering::Greater => {
+            my_question.question_string = format!(
+                "{} + x + {} = {} + {}\nWhat's x? ",
+                my_question.n1, my_question.n2, my_question.n3, my_question.n4
+            );
+        }
+        _ => {
+            my_question.question_string = format!(
+                "{} - x + {} = {} + {}\nWhat's x? ",
+                my_question.n1, my_question.n2, my_question.n3, my_question.n4
+            );
+            my_question.result = my_question.result.abs();
+        }
+    };
+
+    println!("The result is {}", my_question.result);
+
+    my_question
+}
+
 fn addition(range: i32) -> Question {
     let mut my_question = Question {
         lhs: rand::thread_rng().gen_range(10..=range),
@@ -89,7 +131,7 @@ fn main() {
     );
 
     let mut question_number = 1;
-    let total_questions = 20;
+    let total_questions = 10;
 
     // start timer
     let start_time = Instant::now();
@@ -100,14 +142,17 @@ fn main() {
         let subtraction_range = 30;
         let multiplication_range = 12;
         let division_range = 12;
+        let simple_polynomial_range = 20;
 
-        let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
-            0 => addition(addition_range),
-            1 => subtraction(subtraction_range),
-            2 => multiplication(multiplication_range),
-            3 => division(division_range),
-            _ => break,
-        };
+        // let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
+        //     0 => addition(addition_range),
+        //     1 => subtraction(subtraction_range),
+        //     2 => multiplication(multiplication_range),
+        //     3 => division(division_range),
+        //     _ => break,
+        // };
+
+        let question = simple_polynomial(simple_polynomial_range);
 
         println!("{}", "***********".yellow());
         println!("{} {}", "Question".blue(), question_number);

@@ -48,7 +48,7 @@ fn simple_algebra(range: i32) -> SimplePolynomial {
                 my_question.n2,
             ),
             3 => (
-                format!("x + {} = {}\nWhat's x? ", my_question.n3, my_question.n3),
+                format!("x + {} = {}\nWhat's x? ", my_question.n2, my_question.n3),
                 my_question.n1,
             ),
             _ => (String::from("Error"), 0i32),

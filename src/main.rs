@@ -22,6 +22,41 @@ struct SimplePolynomial {
     question_string: String,
 }
 
+fn simple_algebra(range: i32) -> SimplePolynomial {
+    let mut my_question = SimplePolynomial {
+        n1: rand::thread_rng().gen_range(1..=range),
+        n2: rand::thread_rng().gen_range(1..=range),
+        n3: 0,
+        n4: 0,
+        result: 0,
+        question_string: String::new(),
+    };
+
+    my_question.n3 = my_question.n1 + my_question.n2;
+    (my_question.question_string, my_question.result) =
+        match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
+            0 => (
+                format!("x - {} = {}\nWhat's x? ", my_question.n1, my_question.n2),
+                my_question.n3,
+            ),
+            1 => (
+                format!("{} - x = {}\nWhat's x? ", my_question.n3, my_question.n2),
+                my_question.n1,
+            ),
+            2 => (
+                format!("{} + x = {}\nWhat's x? ", my_question.n1, my_question.n3),
+                my_question.n2,
+            ),
+            3 => (
+                format!("x + {} = {}\nWhat's x? ", my_question.n3, my_question.n3),
+                my_question.n1,
+            ),
+            _ => (String::from("Error"), 0i32),
+        };
+
+    my_question
+}
+
 fn simple_polynomial(range: i32) -> SimplePolynomial {
     let mut my_question = SimplePolynomial {
         n1: rand::thread_rng().gen_range(1..=range),
@@ -129,7 +164,7 @@ fn main() {
     );
 
     let mut question_number = 1;
-    let total_questions = 10;
+    let total_questions = 20;
 
     // start timer
     let start_time = Instant::now();
@@ -141,6 +176,7 @@ fn main() {
         let multiplication_range = 12;
         let division_range = 12;
         let simple_polynomial_range = 20;
+        let simple_algebra_range = 20;
 
         // let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
         //     0 => addition(addition_range),
@@ -150,7 +186,8 @@ fn main() {
         //     _ => break,
         // };
 
-        let question = simple_polynomial(simple_polynomial_range);
+        // let question = simple_polynomial(simple_polynomial_range);
+        let question = simple_algebra(simple_algebra_range);
 
         println!("{}", "***********".yellow());
         println!("{} {}", "Question".blue(), question_number);

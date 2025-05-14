@@ -50,8 +50,6 @@ fn simple_polynomial(range: i32) -> SimplePolynomial {
         }
     };
 
-    println!("The result is {}", my_question.result);
-
     my_question
 }
 

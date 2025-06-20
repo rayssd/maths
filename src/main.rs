@@ -341,10 +341,20 @@ fn main() {
                     println!();
                     is_answer_correct = true;
                 }
-                _ => {
-                    println!("{}", "Nope, try again.".red());
-                    println!();
-                }
+                _ => match Uniform::from(0..=1).sample(&mut rand::thread_rng()) {
+                    0 => {
+                        println!("{}", "Nope, try again.".red());
+                        println!();
+                    }
+                    _ => {
+                        println!(
+                            "{}, {}, {} !!",
+                            "INCORRECT".yellow(),
+                            "INCORRECT".bright_magenta(),
+                            "INCORRECT".red()
+                        )
+                    }
+                },
             };
         }
 

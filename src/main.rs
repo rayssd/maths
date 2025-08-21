@@ -217,6 +217,49 @@ fn simple_polynomial3(range: i32) -> SimplePolynomial {
 
     my_question
 }
+
+fn simple_polynomial4(range: i32) -> SimplePolynomial {
+    // {} - x + {} = {} + {} and variations
+
+    let mut my_question = SimplePolynomial::new(range);
+
+    if my_question.n1 + my_question.n2 < my_question.n3 + my_question.n4 {
+        let temp = my_question.n1;
+        my_question.n1 = my_question.n3;
+        my_question.n3 = temp;
+        let temp = my_question.n2;
+        my_question.n2 = my_question.n4;
+        my_question.n4 = temp;
+    }
+
+    my_question.result = my_question.n1 + my_question.n2 - my_question.n3 - my_question.n4;
+
+    let seed = rand::thread_rng().gen_range(0..=3);
+
+    my_question.question_string = match seed {
+        0 => format!(
+            "{} - x + {} = {} + {}\nWhat's x? ",
+            my_question.n1, my_question.n2, my_question.n3, my_question.n4
+        ),
+
+        1 => format!(
+            "{} + {} - x = {} + {}\nWhat's x? ",
+            my_question.n1, my_question.n2, my_question.n3, my_question.n4
+        ),
+
+        2 => format!(
+            "{} + {} = {} + {} - x\nWhat's x? ",
+            my_question.n3, my_question.n4, my_question.n1, my_question.n2
+        ),
+        _ => format!(
+            "{} + {} = {} - x + {}\nWhat's x? ",
+            my_question.n3, my_question.n4, my_question.n1, my_question.n2
+        ),
+    };
+
+    my_question
+}
+
 fn addition(range: i32) -> Question {
     let mut my_question = Question::new_addition_and_subtraction(range);
 
@@ -259,7 +302,7 @@ fn division(range: i32) -> Question {
 }
 
 fn main() {
-    let name = "Peach";
+    let name = "Pooilise";
 
     println!(
         "{}",
@@ -297,10 +340,11 @@ fn main() {
         //     _ => break,
         // };
 
-        let question = match Uniform::from(0..=2).sample(&mut rand::thread_rng()) {
+        let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
             0 => simple_polynomial1(simple_polynomial_range),
             1 => simple_polynomial2(simple_polynomial_range),
             2 => simple_polynomial3(simple_polynomial_range),
+            3 => simple_polynomial4(simple_polynomial_range),
             _ => break,
         };
 
@@ -352,7 +396,8 @@ fn main() {
                             "INCORRECT".yellow(),
                             "INCORRECT".bright_magenta(),
                             "INCORRECT".red()
-                        )
+                        );
+                        println!();
                     }
                 },
             };

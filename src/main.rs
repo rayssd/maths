@@ -323,6 +323,8 @@ fn main() {
     // start timer
     let start_time = Instant::now();
 
+    let dice_roll = Uniform::from(0..=5);
+
     while question_number <= total_questions {
         // Prep the questions
         let addition_range = 20;
@@ -340,11 +342,13 @@ fn main() {
         //     _ => break,
         // };
 
-        let question = match Uniform::from(0..=3).sample(&mut rand::thread_rng()) {
+        let question = match dice_roll.sample(&mut rand::thread_rng()) {
             0 => simple_polynomial1(simple_polynomial_range),
             1 => simple_polynomial2(simple_polynomial_range),
             2 => simple_polynomial3(simple_polynomial_range),
             3 => simple_polynomial4(simple_polynomial_range),
+            4 => simple_polynomial1(simple_polynomial_range),
+            5 => simple_polynomial4(simple_polynomial_range),
             _ => break,
         };
 

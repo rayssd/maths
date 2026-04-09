@@ -168,70 +168,10 @@ impl Question {
         }
     }
 
-    /*
     fn new_linear(range: i32, diff: Difficulty) -> Self {
         let mut rng = rand::thread_rng();
 
-        // Ensure x is positive in simple mode
-        let x_sol = match diff {
-            Difficulty::Simple => rng.gen_range(1..=10),
-            Difficulty::Hard => rng.gen_range(-10..=10),
-        };
-
-        match diff {
-            Difficulty::Simple => {
-                // ax +/- b = c. Result x is positive.
-                let x_sol = rng.gen_range(1..=10);
-                let a = rng.gen_range(2..=9);
-
-                // Allow b to be negative (subtraction), but keep result positive
-                let mut b = rng.gen_range(1..=range);
-                if rng.gen_bool(0.5) {
-                    // Check to ensure ax - b results in a positive number
-                    if (a * x_sol) > b {
-                        b = -b;
-                    }
-                }
-
-                let total = a * x_sol + b;
-                let mut lhs_vec = vec![Term::new(a, 1), Term::new(b, 0)];
-                Question {
-                    text: format!(
-                        "{} = {}\nWhat's x? ",
-                        format_expression(&mut lhs_vec),
-                        total
-                    ),
-                    results: vec![x_sol],
-                }
-            }
-            Difficulty::Hard => {
-                let a = rng.gen_range(-9..=9);
-                let b = rng.gen_range(-range..=range);
-                let mut c = rng.gen_range(-9..=9);
-                while c == a {
-                    c = rng.gen_range(-9..=9);
-                }
-                let d = (a * x_sol) + b - (c * x_sol);
-
-                let mut lhs_vec = vec![Term::new(a, 1), Term::new(b, 0)];
-                let mut rhs_vec = vec![Term::new(c, 1), Term::new(d, 0)];
-
-                Question {
-                    text: format!(
-                        "{} = {}\nWhat's x? ",
-                        format_expression(&mut lhs_vec),
-                        format_expression(&mut rhs_vec)
-                    ),
-                    results: vec![x_sol],
-                }
-            }
-        }
-    }
-    */
-    fn new_linear(range: i32, diff: Difficulty) -> Self {
-        let mut rng = rand::thread_rng();
-
-        // Handle Result Constraints
+        // 1. Pick the answer x
         let x_sol = if diff == Difficulty::Hard {
             rng.gen_range(-10..=10)
         } else {
@@ -240,7 +180,7 @@ impl Question {
 
         match diff {
             Difficulty::Simple => {
-                // ax +/- b = c
+                // ax +/- b = c (The 2-step basics)
                 let a = rng.gen_range(2..=9);
                 let mut b = rng.gen_range(1..=range);
                 if rng.gen_bool(0.5) && (a * x_sol) > b {
@@ -248,78 +188,77 @@ impl Question {
                 }
                 let total = a * x_sol + b;
                 let mut lhs = vec![Term::new(a, 1), Term::new(b, 0)];
+                // Note: We don't shuffle simple to keep the ax + b format standard
                 Question {
                     text: format!("{} = {}\nWhat's x? ", format_expression(&mut lhs), total),
                     results: vec![x_sol],
                 }
             }
             _ => {
-                // Medium & Hard (Polynomial variety)
-                let n1 = rng.gen_range(1..=range);
-                let n2 = rng.gen_range(1..=range);
-                let n3 = rng.gen_range(1..=range);
-                let x_coeff = if diff == Difficulty::Hard && rng.gen_bool(0.5) {
-                    -1
-                } else {
-                    1
-                };
+                // Medium & Hard: Polynomial style with ax on both sides
+                let mut lhs_terms = Vec::new();
+                let mut rhs_terms = Vec::new();
 
-                let seed = rng.gen_range(0..=5);
-                let (mut lhs, mut rhs) = match seed {
-                    0 => {
-                        // x + n1 + n2 = n3 + n4
-                        let n4 = (x_coeff * x_sol) + n1 + n2 - n3;
-                        (
-                            vec![Term::new(x_coeff, 1), Term::new(n1, 0), Term::new(n2, 0)],
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                        )
-                    }
-                    1 => {
-                        // n1 + x + n2 = n3 + n4
-                        let n4 = n1 + (x_coeff * x_sol) + n2 - n3;
-                        (
-                            vec![Term::new(n1, 0), Term::new(x_coeff, 1), Term::new(n2, 0)],
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                        )
-                    }
-                    2 => {
-                        // n3 + n4 = n1 + n2 + x
-                        let n4 = n1 + n2 + (x_coeff * x_sol) - n3;
-                        (
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                            vec![Term::new(n1, 0), Term::new(n2, 0), Term::new(x_coeff, 1)],
-                        )
-                    }
-                    3 => {
-                        // x - n1 - n2 = n3 + n4
-                        let n4 = (x_coeff * x_sol) - n1 - n2 - n3;
-                        (
-                            vec![Term::new(x_coeff, 1), Term::new(-n1, 0), Term::new(-n2, 0)],
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                        )
-                    }
-                    4 => {
-                        // n1 - x + n2 = n3 + n4
-                        let n4 = n1 - (x_coeff * x_sol) + n2 - n3;
-                        (
-                            vec![Term::new(n1, 0), Term::new(-x_coeff, 1), Term::new(n2, 0)],
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                        )
-                    }
-                    _ => {
-                        // n3 + n4 = n1 + n2 - x
-                        let n4 = n1 + n2 - (x_coeff * x_sol) - n3;
-                        (
-                            vec![Term::new(n3, 0), Term::new(n4, 0)],
-                            vec![Term::new(n1, 0), Term::new(n2, 0), Term::new(-x_coeff, 1)],
-                        )
-                    }
-                };
+                // Coefficients for x: ensure they are not equal so x doesn't cancel out
+                let a1 = rng.gen_range(2..=6);
+                let mut a2 = rng.gen_range(1..=5);
+                if a1 == a2 {
+                    a2 += 1;
+                }
+
+                // Add x terms to both sides
+                lhs_terms.push(Term::new(a1, 1));
+                rhs_terms.push(Term::new(a2, 1));
+
+                // Add 1-2 constant terms to LHS
+                let n1 = rng.gen_range(1..=range);
+                lhs_terms.push(Term::new(n1, 0));
+                if rng.gen_bool(0.3) {
+                    let n2 = rng.gen_range(1..=range);
+                    lhs_terms.push(Term::new(n2, 0));
+                }
+
+                // Add 1 constant term to RHS
+                let m1 = rng.gen_range(1..=range);
+                rhs_terms.push(Term::new(m1, 0));
+
+                // Calculate LHS value at x_sol
+                let lhs_val: i32 = lhs_terms
+                    .iter()
+                    .map(|t| {
+                        if t.power == 1 {
+                            t.coeff * x_sol
+                        } else {
+                            t.coeff
+                        }
+                    })
+                    .sum();
+
+                // Calculate current RHS value at x_sol
+                let rhs_current_val: i32 = rhs_terms
+                    .iter()
+                    .map(|t| {
+                        if t.power == 1 {
+                            t.coeff * x_sol
+                        } else {
+                            t.coeff
+                        }
+                    })
+                    .sum();
+
+                // Find the balancing constant d: LHS = RHS + d => d = LHS - RHS
+                let d = lhs_val - rhs_current_val;
+                rhs_terms.push(Term::new(d, 0));
+
+                // SHUFFLE for variety in positioning
+                lhs_terms.shuffle(&mut rng);
+                rhs_terms.shuffle(&mut rng);
+
                 Question {
                     text: format!(
                         "{} = {}\nWhat's x? ",
-                        format_expression(&mut lhs),
-                        format_expression(&mut rhs)
+                        format_expression(&mut lhs_terms),
+                        format_expression(&mut rhs_terms)
                     ),
                     results: vec![x_sol],
                 }

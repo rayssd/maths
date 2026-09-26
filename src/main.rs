@@ -20,9 +20,13 @@ struct Args {
     #[arg(short, long, default_value = "Student")]
     name: String,
 
-    /// Global range for all questions
-    #[arg(short, long, default_value_t = 20)]
-    range: i32,
+    /// Lower bound for all questions
+    #[arg(long, default_value_t = 1)]
+    min: i32,
+
+    /// Upper bound for all questions
+    #[arg(long, default_value_t = 20)]
+    max: i32,
 
     /// Number of questions
     #[arg(short, long, default_value_t = 20)]
@@ -32,7 +36,7 @@ struct Args {
     #[arg(short = 't', long, value_parser, num_args = 1.., value_delimiter = ' ')]
     qtype: Vec<String>,
 
-    /// Choose difficulty for Algebra: simple or hard
+    /// Choose difficulty for Algebra: simple, medium, or hard
     #[arg(short, long, value_enum, default_value_t = Difficulty::Simple)]
     difficulty: Difficulty,
 }
@@ -128,29 +132,31 @@ fn format_expression(terms: &mut Vec<Term>) -> String {
 // --- Question Factory ---
 
 impl Question {
-    fn new_arithmetic(op: &str, range: i32) -> Self {
+    fn new_arithmetic(op: &str, min: i32, max: i32) -> Self {
         let mut rng = rand::thread_rng();
 
         match op {
             "addition" => {
-                let a = rng.gen_range(1..range);
-                let b = rng.gen_range(1..=(range - a));
+                let a = rng.gen_range(min..=max);
+                let b = rng.gen_range(min..=max);
                 Question {
                     text: format!("{} + {} = ", a, b),
                     results: vec![a + b],
                 }
             }
             "subtraction" => {
-                let a = rng.gen_range(1..=range);
-                let b = rng.gen_range(0..=a);
+                let a = rng.gen_range(min..=max);
+                // Ensure b doesn't exceed a (unless min goes into negatives)
+                let b_min = min.min(a);
+                let b = rng.gen_range(b_min..=a);
                 Question {
                     text: format!("{} - {} = ", a, b),
                     results: vec![a - b],
                 }
             }
             "multiplication" => {
-                let a = rng.gen_range(1..=12);
-                let b = rng.gen_range(1..=range.min(12));
+                let a = rng.gen_range(min..=max);
+                let b = rng.gen_range(min..=max);
                 Question {
                     text: format!("{} x {} = ", a, b),
                     results: vec![a * b],
@@ -158,8 +164,12 @@ impl Question {
             }
             _ => {
                 // Division
-                let b = rng.gen_range(1..=12);
-                let res = rng.gen_range(1..=range.min(12));
+                let res = rng.gen_range(min..=max);
+                // Prevent division by zero
+                let divisor_min = if min <= 0 { 1 } else { min };
+                let divisor_max = if max < divisor_min { divisor_min } else { max };
+
+                let b = rng.gen_range(divisor_min..=divisor_max);
                 Question {
                     text: format!("{} ÷ {} = ", b * res, b),
                     results: vec![res],
@@ -168,99 +178,232 @@ impl Question {
         }
     }
 
-    fn new_linear(range: i32, diff: Difficulty) -> Self {
+    fn new_linear(min: i32, max: i32, diff: Difficulty) -> Self {
         let mut rng = rand::thread_rng();
 
         // 1. Pick the answer x
-        let x_sol = if diff == Difficulty::Hard {
-            rng.gen_range(-10..=10)
-        } else {
+        let x_sol = if diff == Difficulty::Simple {
             rng.gen_range(1..=10)
+        } else {
+            rng.gen_range(-10..=10)
         };
 
         match diff {
             Difficulty::Simple => {
                 // ax +/- b = c (The 2-step basics)
                 let a = rng.gen_range(2..=9);
-                let mut b = rng.gen_range(1..=range);
+                let mut b = rng.gen_range(min..=max);
                 if rng.gen_bool(0.5) && (a * x_sol) > b {
                     b = -b;
                 }
                 let total = a * x_sol + b;
                 let mut lhs = vec![Term::new(a, 1), Term::new(b, 0)];
-                // Note: We don't shuffle simple to keep the ax + b format standard
                 Question {
                     text: format!("{} = {}\nWhat's x? ", format_expression(&mut lhs), total),
                     results: vec![x_sol],
                 }
             }
-            _ => {
-                // Medium & Hard: Polynomial style with ax on both sides
-                let mut lhs_terms = Vec::new();
-                let mut rhs_terms = Vec::new();
+            Difficulty::Medium => {
+                // Bracket style: m(ax + b) = cx + d
+                let m = rng.gen_range(2..=5);
+                let a = rng.gen_range(1..=4);
 
-                // Coefficients for x: ensure they are not equal so x doesn't cancel out
-                let a1 = rng.gen_range(2..=6);
-                let mut a2 = rng.gen_range(1..=5);
-                if a1 == a2 {
-                    a2 += 1;
+                let mut b = rng.gen_range(min..=max);
+                if rng.gen_bool(0.5) {
+                    b = -b;
                 }
 
-                // Add x terms to both sides
-                lhs_terms.push(Term::new(a1, 1));
-                rhs_terms.push(Term::new(a2, 1));
-
-                // Add 1-2 constant terms to LHS
-                let n1 = rng.gen_range(1..=range);
-                lhs_terms.push(Term::new(n1, 0));
-                if rng.gen_bool(0.3) {
-                    let n2 = rng.gen_range(1..=range);
-                    lhs_terms.push(Term::new(n2, 0));
+                let mut c = rng.gen_range(1..=10);
+                if c == m * a {
+                    c += 1; // avoid infinite/no solutions (cancelling x)
                 }
 
-                // Add 1 constant term to RHS
-                let m1 = rng.gen_range(1..=range);
-                rhs_terms.push(Term::new(m1, 0));
+                // Balance equation based on root
+                let lhs_val = m * (a * x_sol + b);
+                let d = lhs_val - c * x_sol;
 
-                // Calculate LHS value at x_sol
-                let lhs_val: i32 = lhs_terms
-                    .iter()
-                    .map(|t| {
-                        if t.power == 1 {
-                            t.coeff * x_sol
-                        } else {
-                            t.coeff
-                        }
-                    })
-                    .sum();
+                // Format the LHS string cleanly: "m(ax + b)"
+                let a_str = match a {
+                    1 => "x".to_string(),
+                    _ => format!("{}x", a),
+                };
+                let b_str = if b < 0 {
+                    format!("- {}", b.abs())
+                } else if b > 0 {
+                    format!("+ {}", b)
+                } else {
+                    "".to_string()
+                };
 
-                // Calculate current RHS value at x_sol
-                let rhs_current_val: i32 = rhs_terms
-                    .iter()
-                    .map(|t| {
-                        if t.power == 1 {
-                            t.coeff * x_sol
-                        } else {
-                            t.coeff
-                        }
-                    })
-                    .sum();
+                let lhs_str = if b == 0 {
+                    format!("{}({})", m, a_str)
+                } else {
+                    format!("{}({} {})", m, a_str, b_str)
+                };
 
-                // Find the balancing constant d: LHS = RHS + d => d = LHS - RHS
-                let d = lhs_val - rhs_current_val;
-                rhs_terms.push(Term::new(d, 0));
+                // Format RHS string cleanly: "cx + d"
+                let c_str = match c {
+                    1 => "x".to_string(),
+                    0 => "".to_string(),
+                    _ => format!("{}x", c),
+                };
 
-                // SHUFFLE for variety in positioning
-                lhs_terms.shuffle(&mut rng);
-                rhs_terms.shuffle(&mut rng);
+                let rhs_str = if c == 0 {
+                    d.to_string()
+                } else if d < 0 {
+                    format!("{} - {}", c_str, d.abs())
+                } else if d > 0 {
+                    format!("{} + {}", c_str, d)
+                } else {
+                    c_str
+                };
 
                 Question {
-                    text: format!(
-                        "{} = {}\nWhat's x? ",
-                        format_expression(&mut lhs_terms),
-                        format_expression(&mut rhs_terms)
-                    ),
+                    text: format!("{} = {}\nWhat's x? ", lhs_str, rhs_str),
                     results: vec![x_sol],
+                }
+            }
+            Difficulty::Hard => {
+                if rng.gen_bool(0.5) {
+                    // 50% chance of an Advanced Bracket style: m(ax + b) + k = cx + d
+                    // Multiplier `m` can now be negative, and we add an extra loose term `k`
+                    let m = if rng.gen_bool(0.5) {
+                        rng.gen_range(2..=5)
+                    } else {
+                        rng.gen_range(-5..=-2)
+                    };
+                    let a = rng.gen_range(1..=4);
+
+                    let mut b = rng.gen_range(min..=max);
+                    if rng.gen_bool(0.5) {
+                        b = -b;
+                    }
+
+                    let mut k = rng.gen_range(min..=max);
+                    if rng.gen_bool(0.5) {
+                        k = -k;
+                    }
+
+                    let mut c = rng.gen_range(-5..=5);
+                    if c == m * a {
+                        c += 1; // Prevent x from cancelling out
+                    }
+
+                    // Balance equation based on root
+                    let lhs_val = m * (a * x_sol + b) + k;
+                    let d = lhs_val - c * x_sol;
+
+                    // Format LHS
+                    let a_str = match a {
+                        1 => "x".to_string(),
+                        _ => format!("{}x", a),
+                    };
+                    let b_str = if b < 0 {
+                        format!("- {}", b.abs())
+                    } else if b > 0 {
+                        format!("+ {}", b)
+                    } else {
+                        "".to_string()
+                    };
+
+                    let bracket_str = if b == 0 {
+                        format!("{}({})", m, a_str)
+                    } else {
+                        format!("{}({} {})", m, a_str, b_str)
+                    };
+
+                    let k_str = if k < 0 {
+                        format!(" - {}", k.abs())
+                    } else if k > 0 {
+                        format!(" + {}", k)
+                    } else {
+                        "".to_string()
+                    };
+
+                    let lhs_str = format!("{}{}", bracket_str, k_str);
+
+                    // Format RHS
+                    let c_str = match c {
+                        1 => "x".to_string(),
+                        -1 => "-x".to_string(),
+                        0 => "".to_string(),
+                        _ => format!("{}x", c),
+                    };
+
+                    let rhs_str = if c == 0 {
+                        d.to_string()
+                    } else if d < 0 {
+                        format!("{} - {}", c_str, d.abs())
+                    } else if d > 0 {
+                        format!("{} + {}", c_str, d)
+                    } else {
+                        c_str
+                    };
+
+                    Question {
+                        text: format!("{} = {}\nWhat's x? ", lhs_str, rhs_str),
+                        results: vec![x_sol],
+                    }
+                } else {
+                    // 50% chance of Polynomial style with ax on both sides, multiple constants
+                    let mut lhs_terms = Vec::new();
+                    let mut rhs_terms = Vec::new();
+
+                    let a1 = rng.gen_range(2..=6);
+                    let mut a2 = rng.gen_range(1..=5);
+                    if a1 == a2 {
+                        a2 += 1;
+                    }
+
+                    lhs_terms.push(Term::new(a1, 1));
+                    rhs_terms.push(Term::new(a2, 1));
+
+                    let n1 = rng.gen_range(min..=max);
+                    lhs_terms.push(Term::new(n1, 0));
+
+                    if rng.gen_bool(0.3) {
+                        let n2 = rng.gen_range(min..=max);
+                        lhs_terms.push(Term::new(n2, 0));
+                    }
+
+                    let m1 = rng.gen_range(min..=max);
+                    rhs_terms.push(Term::new(m1, 0));
+
+                    let lhs_val: i32 = lhs_terms
+                        .iter()
+                        .map(|t| {
+                            if t.power == 1 {
+                                t.coeff * x_sol
+                            } else {
+                                t.coeff
+                            }
+                        })
+                        .sum();
+                    let rhs_current_val: i32 = rhs_terms
+                        .iter()
+                        .map(|t| {
+                            if t.power == 1 {
+                                t.coeff * x_sol
+                            } else {
+                                t.coeff
+                            }
+                        })
+                        .sum();
+
+                    let d = lhs_val - rhs_current_val;
+                    rhs_terms.push(Term::new(d, 0));
+
+                    lhs_terms.shuffle(&mut rng);
+                    rhs_terms.shuffle(&mut rng);
+
+                    Question {
+                        text: format!(
+                            "{} = {}\nWhat's x? ",
+                            format_expression(&mut lhs_terms),
+                            format_expression(&mut rhs_terms)
+                        ),
+                        results: vec![x_sol],
+                    }
                 }
             }
         }
@@ -268,10 +411,11 @@ impl Question {
 
     fn new_quadratic(diff: Difficulty) -> Self {
         let mut rng = rand::thread_rng();
-        let (r1, r2) = if diff == Difficulty::Hard {
-            (rng.gen_range(-8..=8), rng.gen_range(-8..=8))
-        } else {
+        let (r1, r2) = if diff == Difficulty::Simple {
             (rng.gen_range(1..=8), rng.gen_range(1..=8))
+        } else {
+            // Both Medium & Hard will use negatives here
+            (rng.gen_range(-8..=8), rng.gen_range(-8..=8))
         };
 
         let b = -(r1 + r2);
@@ -279,7 +423,6 @@ impl Question {
 
         match diff {
             Difficulty::Simple => {
-                // x^2 = c or x^2 + c = bx (no negative signs visible)
                 let mut lhs = vec![Term::new(1, 2), Term::new(c, 0)];
                 let mut rhs = vec![Term::new(-b, 1)];
                 Question {
@@ -292,7 +435,6 @@ impl Question {
                 }
             }
             _ => {
-                // Medium & Hard
                 let (mut lhs, mut rhs) = if rng.gen_bool(0.5) {
                     (
                         vec![Term::new(1, 2), Term::new(b, 1), Term::new(c, 0)],
@@ -321,6 +463,14 @@ impl Question {
 
 fn main() {
     let args = Args::parse();
+
+    // Fallback if no specific ranges given, ensure min isn't larger than max
+    let mut min = args.min;
+    let mut max = args.max;
+    if min > max {
+        std::mem::swap(&mut min, &mut max);
+    }
+
     let mut selected_types = args.qtype.clone();
     if selected_types.is_empty() {
         selected_types = vec![
@@ -342,8 +492,8 @@ fn main() {
         args.name.bright_magenta()
     );
     println!(
-        "Mode: {:?} Difficulty | Range: {}",
-        args.difficulty, args.range
+        "Mode: {:?} Difficulty | Range: {} to {}",
+        args.difficulty, min, max
     );
     println!(
         "{}",
@@ -360,11 +510,11 @@ fn main() {
     for (i, q_type) in deck.iter().enumerate() {
         let question = match q_type.as_str() {
             "addition" | "subtraction" | "multiplication" | "division" => {
-                Question::new_arithmetic(q_type, args.range)
+                Question::new_arithmetic(q_type, min, max)
             }
-            "linear" => Question::new_linear(args.range, args.difficulty),
+            "linear" => Question::new_linear(min, max, args.difficulty),
             "quadratic" => Question::new_quadratic(args.difficulty),
-            _ => Question::new_arithmetic("addition", args.range),
+            _ => Question::new_arithmetic("addition", min, max),
         };
 
         println!("\n{} {} ({})", "Question".blue(), i + 1, q_type.cyan());
@@ -374,6 +524,7 @@ fn main() {
             io::stdout().flush().unwrap();
             let mut input = String::new();
             io::stdin().read_line(&mut input).expect("Failed to read");
+
             if let Ok(num) = input.trim().parse::<i32>() {
                 if question.results.contains(&num) {
                     println!("Well done, {}!", args.name.bright_magenta());
